@@ -16,6 +16,7 @@ function createWindow() {
       contextIsolation: false,
       // 允许在渲染进程中使用 Web Workers
       nodeIntegrationInWorker: true,
+      // CodeMirror 不需要禁用 webSecurity
     },
     // 窗口样式
     backgroundColor: "#f8fafc",

@@ -1328,6 +1328,25 @@ body {
   opacity: 0 !important;
 }
 
+/* CodeMirror 样式支持 */
+.editor-shell--monaco .cm-editor {
+  font-family: var(--font-mono) !important;
+  font-feature-settings: "liga" 1, "calt" 1 !important;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.editor-shell--monaco .cm-content {
+  font-family: var(--font-mono) !important;
+  font-feature-settings: "liga" 1, "calt" 1 !important;
+  font-variant-ligatures: common-ligatures !important;
+}
+
+.editor-shell--monaco .cm-line {
+  font-family: var(--font-mono) !important;
+  font-feature-settings: "liga" 1, "calt" 1 !important;
+}
+
 .editor-shell--tree {
   padding: 12px;
 }

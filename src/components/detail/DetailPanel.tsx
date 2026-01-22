@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import JSONbig from "json-bigint";
-import Editor, { type Monaco } from "@monaco-editor/react";
-import type { editor as MonacoEditor } from "monaco-editor";
+import CodeMirror from "@uiw/react-codemirror";
+import { json } from "@codemirror/lang-json";
+import { EditorView } from "@codemirror/view";
+import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
+import { tags as t } from "@lezer/highlight";
 import { Copy, Check, FileEdit, Code2, Network, Minimize2, Maximize2, Lock, Unlock } from "lucide-react";
 import { useFileStore } from "../../store/fileStore";
 import TreeView, { TreePath } from "./TreeView";
@@ -37,9 +40,7 @@ export default function DetailPanel() {
   const debounceRef = useRef<number | null>(null);
   const messageTimerRef = useRef<number | null>(null);
   const copyTimerRef = useRef<number | null>(null);
-  const editorRef = useRef<MonacoEditor.IStandaloneCodeEditor | null>(null);
-  const highlightDecorationsRef = useRef<string[]>([]);
-  const highlightTimerRef = useRef<number | null>(null);
+  const codeMirrorRef = useRef<HTMLDivElement | null>(null);
 
   const activeFile = useMemo(
     () => files.find((file) => file.id === activeFileId) ?? null,
@@ -165,77 +166,86 @@ export default function DetailPanel() {
     }
   };
 
-  // 定义 Monaco 自定义主题
-  const handleEditorWillMount = (monaco: Monaco) => {
-    monaco.editor.defineTheme("json-clean-light", {
-      base: "vs",
-      inherit: true,
-      rules: [
-        { token: "string.key.json", foreground: "7e22ce", fontStyle: "bold" },
-        { token: "string.value.json", foreground: "047857" },
-        { token: "number", foreground: "b45309" },
-        { token: "keyword.json", foreground: "1d4ed8", fontStyle: "bold" },
-        { token: "delimiter", foreground: "94a3b8" },
-        { token: "delimiter.bracket.json", foreground: "64748b" },
-        { token: "delimiter.colon.json", foreground: "94a3b8" },
-      ],
-      colors: {
-        "editor.background": "#ffffff",
-        "editor.lineHighlightBackground": "#f8fafc",
-        "editorLineNumber.foreground": "#94a3b8",
-        "editorIndentGuide.background": "#e2e8f0",
-        "editor.selectionBackground": "#dbeafe",
-        "editor.inactiveSelectionBackground": "#e2e8f0",
-      },
-    });
-  };
+  // 自定义语法高亮样式（匹配 Monaco 主题）
+  const jsonHighlightStyle = HighlightStyle.define([
+    { tag: t.propertyName, color: "#7e22ce", fontWeight: "bold" }, // 键名：紫色，粗体
+    { tag: t.string, color: "#047857" }, // 字符串值：绿色
+    { tag: t.number, color: "#b45309" }, // 数字：橙色
+    { tag: [t.keyword, t.null, t.bool], color: "#1d4ed8", fontWeight: "bold" }, // 关键字/null/布尔：蓝色，粗体
+    { tag: t.punctuation, color: "#94a3b8" }, // 标点符号：灰色
+    { tag: [t.bracket, t.squareBracket, t.paren], color: "#64748b" }, // 括号：深灰色
+    { tag: t.operator, color: "#94a3b8" }, // 操作符：灰色
+  ]);
 
-  const handleEditorDidMount = (editor: MonacoEditor.IStandaloneCodeEditor) => {
-    editorRef.current = editor;
-  };
-
-  useEffect(() => {
-    const editor = editorRef.current;
-    if (!editor) return;
-    if (viewMode !== "source") return;
-    if (!selectedFieldKey) {
-      highlightDecorationsRef.current = editor.deltaDecorations(
-        highlightDecorationsRef.current,
-        [],
-      );
-      return;
-    }
-    
-    const model = editor.getModel();
-    if (!model) return;
-    
-    const searchText = `"${selectedFieldKey}":`;
-    const matches = model.findMatches(searchText, false, false, true, null, true);
-    if (matches.length === 0) return;
-    
-    const target = matches[0];
-    editor.revealRangeInCenter(target.range);
-    highlightDecorationsRef.current = editor.deltaDecorations(
-      highlightDecorationsRef.current,
-      [
-        {
-          range: target.range,
-          options: { className: "json-field-highlight-line", isWholeLine: true },
+  // CodeMirror 扩展配置
+  const editorExtensions = useMemo(() => {
+    return [
+      json(),
+      syntaxHighlighting(jsonHighlightStyle),
+      EditorView.theme({
+        "&": {
+          fontSize: "13px",
+          fontFamily: "'JetBrains Mono', Consolas, Monaco, monospace",
+          backgroundColor: "#ffffff",
+          color: "#1e293b",
         },
-      ],
-    );
-    
-    if (highlightTimerRef.current) {
-      window.clearTimeout(highlightTimerRef.current);
-    }
-    highlightTimerRef.current = window.setTimeout(() => {
-      if (!editorRef.current) return;
-      highlightDecorationsRef.current = editorRef.current.deltaDecorations(
-        highlightDecorationsRef.current,
-        [],
-      );
-    }, 1500);
-  }, [selectedFieldKey, viewMode]);
+        ".cm-content": {
+          padding: "0",
+          fontFamily: "'JetBrains Mono', Consolas, Monaco, monospace",
+          fontFeatureSettings: '"liga" 1, "calt" 1',
+          fontVariantLigatures: "common-ligatures",
+          caretColor: "#1e293b",
+        },
+        ".cm-focused": {
+          outline: "none",
+        },
+        ".cm-editor": {
+          height: "100%",
+          backgroundColor: "#ffffff",
+        },
+        ".cm-scroller": {
+          overflow: "auto",
+        },
+        ".cm-line": {
+          backgroundColor: "transparent",
+          padding: "0",
+        },
+        ".cm-line.cm-activeLine": {
+          backgroundColor: "#f8fafc",
+        },
+        ".cm-selectionBackground": {
+          backgroundColor: "#dbeafe",
+        },
+        ".cm-selectionMatch": {
+          backgroundColor: "#e2e8f0",
+        },
+        "&.cm-focused .cm-selectionBackground": {
+          backgroundColor: "#dbeafe",
+        },
+        "&.cm-focused .cm-selectionMatch": {
+          backgroundColor: "#e2e8f0",
+        },
+        ".cm-cursor": {
+          borderLeftColor: "#1e293b",
+          borderLeftWidth: "2px",
+          marginLeft: "-1px",
+        },
+        "&.cm-focused .cm-cursor": {
+          borderLeftColor: "#1e293b",
+        },
+        ".cm-gutters": {
+          backgroundColor: "transparent",
+          border: "none",
+          display: "none",
+        },
+        ".cm-lineNumbers": {
+          color: "#94a3b8",
+        },
+      }),
+      EditorView.editable.of(!isEditorReadOnly),
+      EditorView.lineWrapping,
+    ];
+  }, [isEditorReadOnly]);
 
   const handleTreeValueUpdate = (path: TreePath, rawValue: string) => {
     if (!currentRecord) return;
@@ -438,49 +448,24 @@ export default function DetailPanel() {
           </div>
         </div>
       ) : viewMode === "source" ? (
-        <div className="editor-shell editor-shell--monaco">
-          <Editor
-            height="100%"
-            defaultLanguage="json"
+        <div className="editor-shell editor-shell--monaco" ref={codeMirrorRef}>
+          <CodeMirror
             value={editorValue}
-            onChange={handleEditorChange}
-            beforeMount={handleEditorWillMount}
-            onMount={handleEditorDidMount}
-            theme="json-clean-light"
-            options={{
-              readOnly: isEditorReadOnly,
-              minimap: { enabled: false },
-              fontFamily: "'JetBrains Mono', Consolas, Monaco, monospace",
-              fontSize: 13,
-              fontLigatures: true,
-              tabSize: 2,
-              wordWrap: "on",
-              scrollBeyondLastLine: false,
-              renderWhitespace: "none",
-              renderControlCharacters: false,
-              glyphMargin: false,
-              lineNumbers: "off",
-              lineDecorationsWidth: 0,
-              lineNumbersMinChars: 0,
-              renderLineHighlight: "none",
-              stickyScroll: {
-                enabled: false,
-              },
-              guides: {
-                indentation: false,
-                highlightActiveIndentation: false,
-              },
-              overviewRulerLanes: 0,
-              overviewRulerBorder: false,
-              hideCursorInOverviewRuler: true,
-              scrollbar: {
-                vertical: "auto",
-                horizontal: "auto",
-                handleMouseWheel: true,
-              },
-              cursorStyle: "line",
-              cursorBlinking: "solid",
+            onChange={(value) => handleEditorChange(value)}
+            extensions={editorExtensions}
+            editable={!isEditorReadOnly}
+            basicSetup={{
+              lineNumbers: false,
+              foldGutter: false,
+              dropCursor: false,
+              allowMultipleSelections: false,
+              indentOnInput: true,
+              bracketMatching: true,
+              closeBrackets: true,
+              autocompletion: false,
+              highlightSelectionMatches: false,
             }}
+            height="100%"
           />
         </div>
       ) : (
