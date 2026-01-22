@@ -1582,11 +1582,11 @@ body {
   border-radius: 3px;
 }
 
-/* Single key or leaf key - purple style (VS Code aesthetic) */
+/* Single key or leaf key - purple style (匹配源码视图) */
 .json-key--leaf,
 .json-key-leaf-text {
-  color: #6d28d9;
-  font-weight: 600;
+  color: #7e22ce;
+  font-weight: bold;
 }
 
 /* Array index key */
@@ -1639,9 +1639,9 @@ body {
 
 .json-key-index-badge--leaf {
   background: #f5f3ff;
-  color: #6d28d9;
+  color: #7e22ce;
   border-color: #ddd6fe;
-  font-weight: 600;
+  font-weight: bold;
 }
 
 .json-colon {
@@ -1687,12 +1687,12 @@ body {
 }
 
 .json-number {
-  color: #d97706;
+  color: #b45309;
 }
 
 .json-boolean {
   color: #1d4ed8;
-  font-weight: 600;
+  font-weight: bold;
 }
 
 .json-null {
