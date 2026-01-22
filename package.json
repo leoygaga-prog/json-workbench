@@ -27,15 +27,13 @@
       "electron/**/*"
     ],
     "win": {
-      "target": ["portable"],
-      "icon": "public/icon.ico"
+      "target": ["portable"]
     },
     "portable": {
       "artifactName": "JSON-Workbench-${version}-Portable.exe"
     },
     "mac": {
-      "target": "dmg",
-      "icon": "public/icon.icns"
+      "target": "dmg"
     },
     "linux": {
       "target": "AppImage",
