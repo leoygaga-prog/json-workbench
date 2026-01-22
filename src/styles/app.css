@@ -1332,6 +1332,8 @@ body {
 .editor-shell--monaco .cm-editor {
   font-family: var(--font-mono) !important;
   font-feature-settings: "liga" 1, "calt" 1 !important;
+  font-size: 13px !important;
+  line-height: 1.5 !important;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -1340,11 +1342,15 @@ body {
   font-family: var(--font-mono) !important;
   font-feature-settings: "liga" 1, "calt" 1 !important;
   font-variant-ligatures: common-ligatures !important;
+  font-size: 13px !important;
+  line-height: 1.5 !important;
 }
 
 .editor-shell--monaco .cm-line {
   font-family: var(--font-mono) !important;
   font-feature-settings: "liga" 1, "calt" 1 !important;
+  font-size: 13px !important;
+  line-height: 1.5 !important;
 }
 
 .editor-shell--tree {

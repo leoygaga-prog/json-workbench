@@ -3,6 +3,7 @@ import JSONbig from "json-bigint";
 import CodeMirror from "@uiw/react-codemirror";
 import { json } from "@codemirror/lang-json";
 import { EditorView } from "@codemirror/view";
+import { EditorState } from "@codemirror/state";
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { tags as t } from "@lezer/highlight";
 import { Copy, Check, FileEdit, Code2, Network, Minimize2, Maximize2, Lock, Unlock } from "lucide-react";
@@ -65,7 +66,13 @@ export default function DetailPanel() {
     setDisplayScope("single");
   }, [activeFileId]);
 
+  // 当切换记录、视图模式或显示范围时，同步更新编辑器内容
   useEffect(() => {
+    // 如果当前是树形视图，不更新编辑器内容（避免干扰）
+    if (viewMode !== "source") {
+      return;
+    }
+    
     if (displayScope === "all") {
       // 全部数据模式：显示压缩的全部数据
       const nextValue = JSON.stringify(allData);
@@ -82,7 +89,8 @@ export default function DetailPanel() {
       setEditorValue(nextValue);
       setParseError(null);
     }
-  }, [currentRecord, viewMode, displayScope, allData]);
+    // 当切换记录、视图模式或显示范围时更新
+  }, [currentIndex, viewMode, displayScope, currentRecord, allData]);
 
   const flashMessage = (message: string) => {
     setActionMessage(message);
@@ -182,6 +190,7 @@ export default function DetailPanel() {
     return [
       json(),
       syntaxHighlighting(jsonHighlightStyle),
+      EditorState.tabSize.of(2), // 缩进：2 个空格
       EditorView.theme({
         "&": {
           fontSize: "13px",
@@ -195,6 +204,7 @@ export default function DetailPanel() {
           fontFeatureSettings: '"liga" 1, "calt" 1',
           fontVariantLigatures: "common-ligatures",
           caretColor: "#1e293b",
+          lineHeight: "1.5",
         },
         ".cm-focused": {
           outline: "none",
@@ -209,6 +219,7 @@ export default function DetailPanel() {
         ".cm-line": {
           backgroundColor: "transparent",
           padding: "0",
+          lineHeight: "1.5",
         },
         ".cm-line.cm-activeLine": {
           backgroundColor: "#f8fafc",
@@ -464,6 +475,7 @@ export default function DetailPanel() {
               closeBrackets: true,
               autocompletion: false,
               highlightSelectionMatches: false,
+              tabSize: 2,
             }}
             height="100%"
           />

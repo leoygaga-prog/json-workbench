@@ -27,8 +27,7 @@ function createWindow() {
   if (isDev) {
     // 开发模式：加载本地开发服务器
     mainWindow.loadURL("http://localhost:5173");
-    // 打开开发者工具
-    mainWindow.webContents.openDevTools();
+    // 开发模式下不自动打开开发者工具（可按 F12 手动打开）
   } else {
     // 生产模式：加载打包后的文件
     mainWindow.loadFile(path.join(__dirname, "../dist/index.html"));
