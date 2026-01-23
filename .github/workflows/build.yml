@@ -88,3 +88,31 @@ jobs:
           draft: false
           prerelease: false
           generate_release_notes: true
+          body: |
+            ## 📦 下载说明
+            
+            ### Windows
+            - 下载 `JSON-Workbench-*.exe` 文件
+            - 双击运行即可使用（便携版，无需安装）
+            
+            ### macOS
+            - 下载 `JSON-Workbench-*.dmg` 文件
+            - **重要：不要直接双击打开！**
+            - **右键点击 DMG 文件，选择"打开"**
+            - 在弹出的安全警告中点击"打开"
+            - 将应用拖拽到 Applications 文件夹
+            
+            #### 如果遇到安全警告：
+            1. 右键点击 DMG 文件 → 选择"打开"
+            2. 或在"系统设置" → "隐私与安全性" → 点击"仍要打开"
+            
+            > ⚠️ 这是 macOS Gatekeeper 的正常安全机制，应用本身是安全的。
+            
+            ## 📝 更新内容
+            
+            查看 [完整更新日志](https://github.com/leoygaga-prog/json-workbench/compare/v0.1.6...${{ github.ref_name }})
+            
+            ## 📖 更多信息
+            
+            - [macOS 安装详细说明](https://github.com/leoygaga-prog/json-workbench/blob/main/MACOS_INSTALL.md)
+            - [项目主页](https://github.com/leoygaga-prog/json-workbench)
