@@ -210,15 +210,11 @@ export default function DetailPanel() {
           outline: "none",
         },
         ".cm-editor": {
-          height: "100%",
+          height: "auto",
           backgroundColor: "#ffffff",
-          display: "flex",
-          flexDirection: "column",
         },
         ".cm-scroller": {
-          overflow: "auto",
-          flex: "1 1 auto",
-          minHeight: "0",
+          overflow: "visible",
         },
         ".cm-line": {
           backgroundColor: "transparent",
