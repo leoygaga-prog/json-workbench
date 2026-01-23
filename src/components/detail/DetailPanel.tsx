@@ -187,8 +187,8 @@ export default function DetailPanel() {
     { tag: t.operator, color: "#94a3b8" }, // 操作符：灰色
   ]);
 
-  // 字段高亮效果
-  const highlightFieldEffect = StateEffect.define<{ from: number; to: number } | null>();
+  // 字段高亮效果（整行高亮，仿照树形视图）
+  const highlightFieldEffect = StateEffect.define<number | null>();
   const highlightField = StateField.define<DecorationSet>({
     create() {
       return Decoration.none;
@@ -200,12 +200,12 @@ export default function DetailPanel() {
           if (effect.value === null) {
             decorations = Decoration.none;
           } else {
-            const { from, to } = effect.value;
+            const line = tr.state.doc.lineAt(effect.value);
             decorations = Decoration.none.update({
               add: [
-                Decoration.mark({
-                  class: "json-field-highlight",
-                }).range(from, to),
+                Decoration.line({
+                  class: "json-field-highlight-line",
+                }).range(line.from),
               ],
             });
           }
@@ -289,9 +289,9 @@ export default function DetailPanel() {
         ".cm-lineNumbers": {
           color: "#94a3b8",
         },
-        ".json-field-highlight": {
-          backgroundColor: "rgba(59, 130, 246, 0.16)",
-          borderRadius: "2px",
+        ".json-field-highlight-line": {
+          backgroundColor: "rgba(59, 130, 246, 0.12)",
+          transition: "background-color 0.6s ease-out",
         },
       }),
       EditorView.editable.of(!isEditorReadOnly),
@@ -299,7 +299,7 @@ export default function DetailPanel() {
     ];
   }, [isEditorReadOnly]);
 
-  // 字段高亮和跳转效果
+  // 字段高亮和跳转效果（仿照树形视图的蓝色高亮）
   useEffect(() => {
     const view = editorViewRef.current;
     if (!view) return;
@@ -319,14 +319,15 @@ export default function DetailPanel() {
 
     if (index === -1) return;
 
-    const from = index;
-    const to = from + searchText.length;
+    // 获取字段所在的行号
+    const line = doc.lineAt(index);
+    const lineStart = line.from;
 
-    // 滚动到目标位置
+    // 滚动到目标位置并高亮整行
     view.dispatch({
       effects: [
-        EditorView.scrollIntoView(from, { y: "center" }),
-        highlightFieldEffect.of({ from, to }),
+        EditorView.scrollIntoView(lineStart, { y: "center" }),
+        highlightFieldEffect.of(lineStart),
       ],
     });
 
