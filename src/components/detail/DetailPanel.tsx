@@ -200,14 +200,18 @@ export default function DetailPanel() {
           if (effect.value === null) {
             decorations = Decoration.none;
           } else {
-            const line = tr.state.doc.lineAt(effect.value);
-            decorations = Decoration.none.update({
-              add: [
-                Decoration.line({
-                  class: "json-field-highlight-line",
-                }).range(line.from),
-              ],
-            });
+            try {
+              const line = tr.state.doc.lineAt(effect.value);
+              decorations = Decoration.none.update({
+                add: [
+                  Decoration.line({
+                    class: "json-field-highlight-line",
+                  }).range(line.from),
+                ],
+              });
+            } catch {
+              decorations = Decoration.none;
+            }
           }
         }
       }
@@ -290,8 +294,11 @@ export default function DetailPanel() {
           color: "#94a3b8",
         },
         ".json-field-highlight-line": {
-          backgroundColor: "rgba(59, 130, 246, 0.12)",
+          backgroundColor: "rgba(59, 130, 246, 0.12) !important",
           transition: "background-color 0.6s ease-out",
+        },
+        ".cm-line.json-field-highlight-line": {
+          backgroundColor: "rgba(59, 130, 246, 0.12) !important",
         },
       }),
       EditorView.editable.of(!isEditorReadOnly),
@@ -301,44 +308,57 @@ export default function DetailPanel() {
 
   // 字段高亮和跳转效果（仿照树形视图的蓝色高亮）
   useEffect(() => {
-    const view = editorViewRef.current;
-    if (!view) return;
     if (viewMode !== "source") return;
     if (!selectedFieldKey) {
       // 清除高亮
-      view.dispatch({
-        effects: highlightFieldEffect.of(null),
-      });
-      return;
-    }
-
-    const searchText = `"${selectedFieldKey}":`;
-    const doc = view.state.doc;
-    const text = doc.toString();
-    const index = text.indexOf(searchText);
-
-    if (index === -1) return;
-
-    // 获取字段所在的行号
-    const line = doc.lineAt(index);
-    const lineStart = line.from;
-
-    // 滚动到目标位置并高亮整行
-    view.dispatch({
-      effects: [
-        EditorView.scrollIntoView(lineStart, { y: "center" }),
-        highlightFieldEffect.of(lineStart),
-      ],
-    });
-
-    // 1.5秒后清除高亮
-    const timer = setTimeout(() => {
-      if (editorViewRef.current) {
-        editorViewRef.current.dispatch({
+      const view = editorViewRef.current;
+      if (view) {
+        view.dispatch({
           effects: highlightFieldEffect.of(null),
         });
       }
-    }, 1500);
+      return;
+    }
+
+    // 延迟一下确保视图已更新
+    const timer = setTimeout(() => {
+      const view = editorViewRef.current;
+      if (!view) return;
+
+      const searchText = `"${selectedFieldKey}":`;
+      const doc = view.state.doc;
+      const text = doc.toString();
+      const index = text.indexOf(searchText);
+
+      if (index === -1) return;
+
+      try {
+        // 获取字段所在的行号
+        const line = doc.lineAt(index);
+        const lineStart = line.from;
+
+        // 滚动到目标位置并高亮整行
+        view.dispatch({
+          effects: [
+            EditorView.scrollIntoView(lineStart, { y: "center" }),
+            highlightFieldEffect.of(lineStart),
+          ],
+        });
+
+        // 1.5秒后清除高亮
+        const clearTimer = setTimeout(() => {
+          if (editorViewRef.current) {
+            editorViewRef.current.dispatch({
+              effects: highlightFieldEffect.of(null),
+            });
+          }
+        }, 1500);
+
+        return () => clearTimeout(clearTimer);
+      } catch (error) {
+        // 忽略错误
+      }
+    }, 50);
 
     return () => clearTimeout(timer);
   }, [selectedFieldKey, viewMode, editorValue]);

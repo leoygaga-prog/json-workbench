@@ -1359,6 +1359,16 @@ body {
   line-height: 1.5 !important;
 }
 
+/* CodeMirror 字段高亮样式（与树形视图一致） */
+.editor-shell--monaco .json-field-highlight-line {
+  background: rgba(59, 130, 246, 0.12) !important;
+  transition: background-color 0.6s ease-out;
+}
+
+.editor-shell--monaco .cm-line.json-field-highlight-line {
+  background: rgba(59, 130, 246, 0.12) !important;
+}
+
 .editor-shell--tree {
   padding: 12px;
 }
