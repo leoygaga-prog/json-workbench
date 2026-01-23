@@ -212,9 +212,13 @@ export default function DetailPanel() {
         ".cm-editor": {
           height: "100%",
           backgroundColor: "#ffffff",
+          display: "flex",
+          flexDirection: "column",
         },
         ".cm-scroller": {
           overflow: "auto",
+          flex: "1 1 auto",
+          minHeight: "0",
         },
         ".cm-line": {
           backgroundColor: "transparent",
@@ -477,7 +481,6 @@ export default function DetailPanel() {
               highlightSelectionMatches: false,
               tabSize: 2,
             }}
-            height="100%"
           />
         </div>
       ) : (
