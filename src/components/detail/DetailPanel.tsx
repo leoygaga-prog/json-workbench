@@ -3,9 +3,10 @@ import JSONbig from "json-bigint";
 import CodeMirror from "@uiw/react-codemirror";
 import { json } from "@codemirror/lang-json";
 import { EditorView } from "@codemirror/view";
-import { EditorState } from "@codemirror/state";
+import { EditorState, StateEffect, StateField } from "@codemirror/state";
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { tags as t } from "@lezer/highlight";
+import { Decoration, DecorationSet } from "@codemirror/view";
 import { Copy, Check, FileEdit, Code2, Network, Minimize2, Maximize2, Lock, Unlock } from "lucide-react";
 import { useFileStore } from "../../store/fileStore";
 import TreeView, { TreePath } from "./TreeView";
@@ -42,6 +43,7 @@ export default function DetailPanel() {
   const messageTimerRef = useRef<number | null>(null);
   const copyTimerRef = useRef<number | null>(null);
   const codeMirrorRef = useRef<HTMLDivElement | null>(null);
+  const editorViewRef = useRef<EditorView | null>(null);
 
   const activeFile = useMemo(
     () => files.find((file) => file.id === activeFileId) ?? null,
@@ -185,12 +187,47 @@ export default function DetailPanel() {
     { tag: t.operator, color: "#94a3b8" }, // 操作符：灰色
   ]);
 
+  // 字段高亮效果
+  const highlightFieldEffect = StateEffect.define<{ from: number; to: number } | null>();
+  const highlightField = StateField.define<DecorationSet>({
+    create() {
+      return Decoration.none;
+    },
+    update(decorations, tr) {
+      decorations = decorations.map(tr.changes);
+      for (const effect of tr.effects) {
+        if (effect.is(highlightFieldEffect)) {
+          if (effect.value === null) {
+            decorations = Decoration.none;
+          } else {
+            const { from, to } = effect.value;
+            decorations = Decoration.none.update({
+              add: [
+                Decoration.mark({
+                  class: "json-field-highlight",
+                }).range(from, to),
+              ],
+            });
+          }
+        }
+      }
+      return decorations;
+    },
+    provide: (f) => EditorView.decorations.from(f),
+  });
+
   // CodeMirror 扩展配置
   const editorExtensions = useMemo(() => {
     return [
       json(),
       syntaxHighlighting(jsonHighlightStyle),
+      highlightField,
       EditorState.tabSize.of(2), // 缩进：2 个空格
+      EditorView.updateListener.of((update) => {
+        if (update.view) {
+          editorViewRef.current = update.view;
+        }
+      }),
       EditorView.theme({
         "&": {
           fontSize: "13px",
@@ -252,11 +289,58 @@ export default function DetailPanel() {
         ".cm-lineNumbers": {
           color: "#94a3b8",
         },
+        ".json-field-highlight": {
+          backgroundColor: "rgba(59, 130, 246, 0.16)",
+          borderRadius: "2px",
+        },
       }),
       EditorView.editable.of(!isEditorReadOnly),
       EditorView.lineWrapping,
     ];
   }, [isEditorReadOnly]);
+
+  // 字段高亮和跳转效果
+  useEffect(() => {
+    const view = editorViewRef.current;
+    if (!view) return;
+    if (viewMode !== "source") return;
+    if (!selectedFieldKey) {
+      // 清除高亮
+      view.dispatch({
+        effects: highlightFieldEffect.of(null),
+      });
+      return;
+    }
+
+    const searchText = `"${selectedFieldKey}":`;
+    const doc = view.state.doc;
+    const text = doc.toString();
+    const index = text.indexOf(searchText);
+
+    if (index === -1) return;
+
+    const from = index;
+    const to = from + searchText.length;
+
+    // 滚动到目标位置
+    view.dispatch({
+      effects: [
+        EditorView.scrollIntoView(from, { y: "center" }),
+        highlightFieldEffect.of({ from, to }),
+      ],
+    });
+
+    // 1.5秒后清除高亮
+    const timer = setTimeout(() => {
+      if (editorViewRef.current) {
+        editorViewRef.current.dispatch({
+          effects: highlightFieldEffect.of(null),
+        });
+      }
+    }, 1500);
+
+    return () => clearTimeout(timer);
+  }, [selectedFieldKey, viewMode, editorValue]);
 
   const handleTreeValueUpdate = (path: TreePath, rawValue: string) => {
     if (!currentRecord) return;
