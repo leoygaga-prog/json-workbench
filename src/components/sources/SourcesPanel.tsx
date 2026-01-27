@@ -291,7 +291,7 @@ export default function SourcesPanel() {
                   </div>
                   <div className="panel-header-text">
                     <h2 className="panel-title-modern">数据源</h2>
-                    <span className="panel-subtitle-modern">多文件 · JSON/JSONL/XLSX</span>
+                    <span className="panel-subtitle-modern">多文件 · JSON/JSONL/XLSX/CSV</span>
                   </div>
                 </div>
               </div>
@@ -312,7 +312,7 @@ export default function SourcesPanel() {
         <input
           ref={inputRef}
           type="file"
-          accept=".json,.jsonl,.xlsx,.xls"
+          accept=".json,.jsonl,.xlsx,.xls,.csv"
           hidden
           multiple
           onChange={handleFileChange}
@@ -619,6 +619,9 @@ async function buildParsePayload(file: File): Promise<WorkerParsePayload> {
   }
   if (name.endsWith(".xlsx") || name.endsWith(".xls")) {
     return { kind: "xlsx", buffer: await file.arrayBuffer() };
+  }
+  if (name.endsWith(".csv")) {
+    return { kind: "csv", text: await file.text() };
   }
   return { kind: "json", text: await file.text() };
 }

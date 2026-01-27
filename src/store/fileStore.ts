@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
 
-export type FileType = "json" | "jsonl" | "xlsx";
+export type FileType = "json" | "jsonl" | "xlsx" | "csv";
 
 export interface FileSource {
   id: string;

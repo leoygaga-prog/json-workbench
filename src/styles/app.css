@@ -70,12 +70,11 @@ body {
   width: 32px;
   height: 32px;
   border-radius: 8px;
-  background: linear-gradient(to bottom right, #2563eb, #4f46e5);
+  background: #2563eb;
   color: white;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.3), 0 2px 4px -1px rgba(37, 99, 235, 0.2);
 }
 
 .app-header-brand-text {
@@ -1175,8 +1174,12 @@ body {
 }
 
 .json-field-highlight-line {
-  background: rgba(59, 130, 246, 0.16);
-  animation: jsonFieldHighlightFade 1.5s ease-out forwards;
+  background: rgba(59, 130, 246, 0.12) !important;
+}
+
+/* CodeMirror line decoration 高亮样式 */
+.cm-line.json-field-highlight-line {
+  background: rgba(59, 130, 246, 0.12) !important;
 }
 
 .json-line--highlight {
@@ -1186,10 +1189,10 @@ body {
 
 @keyframes jsonFieldHighlightFade {
   0% {
-    background: rgba(59, 130, 246, 0.22);
+    background: rgba(59, 130, 246, 0.35);
   }
   100% {
-    background: transparent;
+    background: rgba(59, 130, 246, 0.25);
   }
 }
 
@@ -1360,11 +1363,6 @@ body {
 }
 
 /* CodeMirror 字段高亮样式（与树形视图一致） */
-.editor-shell--monaco .json-field-highlight-line {
-  background: rgba(59, 130, 246, 0.12) !important;
-  transition: background-color 0.6s ease-out;
-}
-
 .editor-shell--monaco .cm-line.json-field-highlight-line {
   background: rgba(59, 130, 246, 0.12) !important;
 }

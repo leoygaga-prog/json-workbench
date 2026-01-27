@@ -4,7 +4,8 @@ import * as XLSX from "xlsx";
 export type WorkerParsePayload =
   | { kind: "json"; text: string }
   | { kind: "jsonl"; text: string }
-  | { kind: "xlsx"; buffer: ArrayBuffer };
+  | { kind: "xlsx"; buffer: ArrayBuffer }
+  | { kind: "csv"; text: string };
 
 export type BatchAction =
   | {
@@ -115,6 +116,26 @@ function parseData(
     const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
     const data = firstSheet ? XLSX.utils.sheet_to_json(firstSheet) : [];
     return { data, errors: [] };
+  }
+
+  if (payload.kind === "csv") {
+    postProgress(requestId, 30, "parse:csv");
+    try {
+      // 使用 XLSX 解析 CSV
+      const workbook = XLSX.read(payload.text, { type: "string", sheetRows: 0 });
+      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+      const data = firstSheet ? XLSX.utils.sheet_to_json(firstSheet) : [];
+      return { data, errors: [] };
+    } catch (error) {
+      return {
+        data: [],
+        errors: [{
+          line: 1,
+          raw: payload.text.substring(0, 100),
+          message: error instanceof Error ? error.message : "CSV 解析失败",
+        }],
+      };
+    }
   }
 
   const text = payload.text ?? "";

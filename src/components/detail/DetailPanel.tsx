@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import JSONbig from "json-bigint";
 import CodeMirror from "@uiw/react-codemirror";
 import { json } from "@codemirror/lang-json";
-import { EditorView } from "@codemirror/view";
+import { EditorView, ViewPlugin, ViewUpdate } from "@codemirror/view";
 import { EditorState, StateEffect, StateField } from "@codemirror/state";
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { tags as t } from "@lezer/highlight";
@@ -188,7 +188,11 @@ export default function DetailPanel() {
   ]);
 
   // 字段高亮效果（整行高亮，仿照树形视图）
+  // 树形视图使用：className={`json-line ${isHighlighted ? "json-line--highlight" : ""}`}
+  // CSS: .json-line--highlight { background: rgba(59, 130, 246, 0.12); }
   const highlightFieldEffect = StateEffect.define<number | null>();
+  
+  // 使用 StateField 存储高亮行位置
   const highlightField = StateField.define<DecorationSet>({
     create() {
       return Decoration.none;
@@ -202,13 +206,15 @@ export default function DetailPanel() {
           } else {
             try {
               const line = tr.state.doc.lineAt(effect.value);
-              decorations = Decoration.none.update({
-                add: [
-                  Decoration.line({
-                    class: "json-field-highlight-line",
-                  }).range(line.from),
-                ],
-              });
+              // 使用 line decoration，正确的方式是使用 attributes
+              const lineDeco = Decoration.line({
+                attributes: { 
+                  class: "json-field-highlight-line",
+                  style: "background-color: rgba(59, 130, 246, 0.12);",
+                },
+              }).range(line.from);
+              
+              decorations = Decoration.set([lineDeco]);
             } catch {
               decorations = Decoration.none;
             }
@@ -220,17 +226,98 @@ export default function DetailPanel() {
     provide: (f) => EditorView.decorations.from(f),
   });
 
+  // 额外的 ViewPlugin：直接操作 DOM 确保高亮生效
+  const highlightViewPlugin = ViewPlugin.fromClass(
+    class {
+      private highlightPos: number | null = null;
+      private currentHighlightEl: HTMLElement | null = null;
+
+      constructor(private view: EditorView) {}
+
+      update(update: ViewUpdate) {
+        // 检查是否有高亮效果变化
+        let newHighlightPos: number | null = null;
+        for (const tr of update.transactions) {
+          for (const effect of tr.effects) {
+            if (effect.is(highlightFieldEffect)) {
+              newHighlightPos = effect.value;
+              break;
+            }
+          }
+        }
+
+        if (newHighlightPos !== this.highlightPos) {
+          this.highlightPos = newHighlightPos;
+          // 延迟一下确保 DOM 已更新
+          setTimeout(() => this.updateHighlight(), 10);
+        }
+      }
+
+      private updateHighlight() {
+        // 清除之前的高亮
+        if (this.currentHighlightEl) {
+          this.currentHighlightEl.classList.remove("json-field-highlight-line");
+          this.currentHighlightEl.style.backgroundColor = "";
+          this.currentHighlightEl = null;
+        }
+
+        if (this.highlightPos !== null) {
+          try {
+            const line = this.view.state.doc.lineAt(this.highlightPos);
+            
+            // 使用 CodeMirror 的 DOM API 找到对应的行元素
+            const lineElements = this.view.dom.querySelectorAll(".cm-line");
+            
+            // 通过计算行号找到对应的 DOM 元素
+            const targetLineNumber = line.number;
+            let currentLineNumber = 1;
+            
+            for (let i = 0; i < lineElements.length; i++) {
+              const lineEl = lineElements[i] as HTMLElement;
+              
+              // 尝试通过行号匹配
+              if (currentLineNumber === targetLineNumber) {
+                // 找到目标行，添加高亮（像树形视图一样一直显示，不自动消失）
+                lineEl.classList.add("json-field-highlight-line");
+                lineEl.style.backgroundColor = "rgba(59, 130, 246, 0.12)";
+                this.currentHighlightEl = lineEl;
+                break;
+              }
+              currentLineNumber++;
+            }
+          } catch (error) {
+            // 忽略错误
+          }
+        }
+      }
+
+      destroy() {
+        if (this.currentHighlightEl) {
+          this.currentHighlightEl.classList.remove("json-field-highlight-line");
+          this.currentHighlightEl.style.backgroundColor = "";
+        }
+      }
+    }
+  );
+
   // CodeMirror 扩展配置
   const editorExtensions = useMemo(() => {
     return [
       json(),
       syntaxHighlighting(jsonHighlightStyle),
       highlightField,
+      highlightViewPlugin, // 添加 ViewPlugin 直接操作 DOM
       EditorState.tabSize.of(2), // 缩进：2 个空格
       EditorView.updateListener.of((update) => {
         if (update.view) {
           editorViewRef.current = update.view;
         }
+      }),
+      // 使用 baseTheme 定义字段高亮样式，确保优先级（完全仿照树形视图）
+      EditorView.baseTheme({
+        ".cm-line.json-field-highlight-line": {
+          backgroundColor: "rgba(59, 130, 246, 0.12) !important",
+        },
       }),
       EditorView.theme({
         "&": {
@@ -265,6 +352,13 @@ export default function DetailPanel() {
         ".cm-line.cm-activeLine": {
           backgroundColor: "#f8fafc",
         },
+        ".cm-line.json-field-highlight-line": {
+          backgroundColor: "rgba(59, 130, 246, 0.12) !important",
+        },
+        // 确保高亮样式优先级最高
+        "& .cm-line.json-field-highlight-line": {
+          backgroundColor: "rgba(59, 130, 246, 0.12) !important",
+        },
         ".cm-selectionBackground": {
           backgroundColor: "#dbeafe",
         },
@@ -293,75 +387,99 @@ export default function DetailPanel() {
         ".cm-lineNumbers": {
           color: "#94a3b8",
         },
-        ".json-field-highlight-line": {
-          backgroundColor: "rgba(59, 130, 246, 0.12) !important",
-          transition: "background-color 0.6s ease-out",
-        },
-        ".cm-line.json-field-highlight-line": {
-          backgroundColor: "rgba(59, 130, 246, 0.12) !important",
-        },
       }),
       EditorView.editable.of(!isEditorReadOnly),
       EditorView.lineWrapping,
     ];
   }, [isEditorReadOnly]);
 
-  // 字段高亮和跳转效果（仿照树形视图的蓝色高亮）
+  // 字段高亮和跳转效果（完全仿照树形视图的实现）
+  // 树形视图使用两个独立的 useEffect：一个设置高亮状态，一个处理滚动
+  const [highlightedLineStart, setHighlightedLineStart] = useState<number | null>(null);
+  const highlightLineRef = useRef<HTMLElement | null>(null);
+
+  // 第一个 useEffect：设置高亮状态（仿照树形视图的第一个 useEffect）
   useEffect(() => {
-    if (viewMode !== "source") return;
+    if (viewMode !== "source") {
+      setHighlightedLineStart(null);
+      return;
+    }
+    
     if (!selectedFieldKey) {
-      // 清除高亮
-      const view = editorViewRef.current;
-      if (view) {
-        view.dispatch({
-          effects: highlightFieldEffect.of(null),
-        });
-      }
+      setHighlightedLineStart(null);
       return;
     }
 
-    // 延迟一下确保视图已更新
-    const timer = setTimeout(() => {
-      const view = editorViewRef.current;
-      if (!view) return;
+    const view = editorViewRef.current;
+    if (!view) {
+      setHighlightedLineStart(null);
+      return;
+    }
 
-      const searchText = `"${selectedFieldKey}":`;
-      const doc = view.state.doc;
-      const text = doc.toString();
-      const index = text.indexOf(searchText);
+    const searchText = `"${selectedFieldKey}":`;
+    const doc = view.state.doc;
+    const text = doc.toString();
+    const index = text.indexOf(searchText);
 
-      if (index === -1) return;
+    if (index === -1) {
+      setHighlightedLineStart(null);
+      return;
+    }
 
-      try {
-        // 获取字段所在的行号
-        const line = doc.lineAt(index);
-        const lineStart = line.from;
+    try {
+      const line = doc.lineAt(index);
+      setHighlightedLineStart(line.from);
+      
+      // 设置 decoration 高亮
+      view.dispatch({
+        effects: highlightFieldEffect.of(line.from),
+      });
+    } catch (error) {
+      setHighlightedLineStart(null);
+    }
+  }, [selectedFieldKey, viewMode, editorValue]);
 
-        // 滚动到目标位置并高亮整行
-        view.dispatch({
-          effects: [
-            EditorView.scrollIntoView(lineStart, { y: "center" }),
-            highlightFieldEffect.of(lineStart),
-          ],
+  // 第二个 useEffect：处理滚动和高亮 DOM（仿照树形视图的第二个 useEffect）
+  useEffect(() => {
+    if (!highlightedLineStart || viewMode !== "source") {
+      highlightLineRef.current = null;
+      return;
+    }
+
+    const view = editorViewRef.current;
+    if (!view) return;
+
+    try {
+      const line = view.state.doc.lineAt(highlightedLineStart);
+      const lineNumber = line.number;
+
+      // 清除之前的高亮
+      const codeMirrorDom = codeMirrorRef.current;
+      if (codeMirrorDom) {
+        const lines = codeMirrorDom.querySelectorAll(".cm-line.json-field-highlight-line");
+        lines.forEach((lineEl) => {
+          (lineEl as HTMLElement).classList.remove("json-field-highlight-line");
+          (lineEl as HTMLElement).style.backgroundColor = "";
         });
 
-        // 1.5秒后清除高亮
-        const clearTimer = setTimeout(() => {
-          if (editorViewRef.current) {
-            editorViewRef.current.dispatch({
-              effects: highlightFieldEffect.of(null),
-            });
+        // 找到对应的行元素并设置高亮
+        const lineElements = codeMirrorDom.querySelectorAll(".cm-line");
+        if (lineElements.length >= lineNumber) {
+          const targetLine = lineElements[lineNumber - 1] as HTMLElement;
+          if (targetLine) {
+            targetLine.classList.add("json-field-highlight-line");
+            targetLine.style.backgroundColor = "rgba(59, 130, 246, 0.12)";
+            highlightLineRef.current = targetLine;
+            
+            // 滚动到目标位置（完全仿照树形视图的 scrollIntoView）
+            targetLine.scrollIntoView({ block: "center", behavior: "smooth" });
           }
-        }, 1500);
-
-        return () => clearTimeout(clearTimer);
-      } catch (error) {
-        // 忽略错误
+        }
       }
-    }, 50);
-
-    return () => clearTimeout(timer);
-  }, [selectedFieldKey, viewMode, editorValue]);
+    } catch (error) {
+      // 忽略错误
+    }
+  }, [highlightedLineStart, viewMode]);
 
   const handleTreeValueUpdate = (path: TreePath, rawValue: string) => {
     if (!currentRecord) return;
